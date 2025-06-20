@@ -1,0 +1,9 @@
+[package]
+name = "guirs"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+gtk = { version = "0.9.6", package = "gtk4" }
+glib = "0.20"
+gio = "0.20.0"

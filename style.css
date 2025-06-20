@@ -1,0 +1,125 @@
+window {
+  background: linear-gradient(to bottom right, #f0f8ff, #add8e6);
+  border-radius: 15px;
+}
+
+.glass-box,
+.glass-list-box,
+.glass-scroll-window {
+  background: rgba(255, 255, 255, 0.15);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 15px;
+  box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
+  padding: 15px;
+}
+
+/* Specific styling for the input box */
+.glass-box {
+  margin-bottom: 20px;
+}
+
+/* Styling for the list box containing tasks */
+.glass-list-box {
+  padding: 0;
+  background: transparent;
+  border: none;
+}
+
+.glass-scroll-window {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 15px;
+  padding: 0;
+}
+
+/* Title Label */
+.title-label {
+  font-size: 2.2em;
+  font-weight: bold;
+  color: #2c3e50;
+  margin-bottom: 25px;
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+/* Entry Widget */
+.task-entry {
+  font-size: 1.1em;
+  padding: 12px 15px;
+  border: 1px solid #a0c4ff;
+  border-radius: 10px;
+  background-color: rgba(255, 255, 255, 0.7);
+  color: #333;
+}
+.task-entry:focus {
+  border-color: #4a90e2;
+  box-shadow: 0 0 8px rgba(74, 144, 226, 0.3);
+}
+
+/* Action Button */
+.action-button {
+  background: linear-gradient(145deg, #6a82fb, #fc5c7d);
+  color: white;
+  font-weight: bold;
+  font-size: 1.1em;
+  padding: 12px 25px;
+  border-radius: 10px;
+  border: none;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+  transition: all 0.3s ease;
+}
+.action-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+}
+.action-button:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+/* To-Do Item Rows */
+.todo-row {
+  background: rgba(255, 255, 255, 0.1);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+  margin-bottom: 5px;
+  border-radius: 8px;
+}
+.todo-row:last-child {
+  border-bottom: none;
+}
+.todo-item-hbox {
+  padding: 10px 15px;
+}
+
+.todo-text {
+  font-size: 1.05em;
+  color: #333;
+  padding-top: 2px;
+}
+
+/* Completed Task Styling */
+.completed-task {
+  text-decoration: line-through;
+  color: #777;
+  opacity: 0.7;
+}
+
+/* Delete Button */
+.delete-button {
+  background-color: #e74c3c;
+  color: white;
+  font-weight: bold;
+  font-size: 0.9em;
+  padding: 5px 10px;
+  border-radius: 5px;
+  border: none;
+  min-width: 30px;
+  min-height: 30px;
+}
+.delete-button:hover {
+  background-color: #c0392b;
+}
+
+/* Checkbox specific styling */
+checkbutton {
+  margin-right: 5px;
+}
