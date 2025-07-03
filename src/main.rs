@@ -4,8 +4,8 @@ use gtk::gdk::Display;
 use gtk::glib;
 use gtk::prelude::*;
 use gtk::{
-    Application, ApplicationWindow, Box, Button, Dialog, Entry, Label, ListBox, ListBoxRow,
-    Orientation, ResponseType, ScrolledWindow,
+    Application, ApplicationWindow, Box, Button, ComboBoxText, Dialog, Entry, Label, ListBox,
+    ListBoxRow, Orientation, ResponseType, ScrolledWindow,
 };
 use gtk::{CssProvider, style_context_add_provider_for_display};
 use std::cell::RefCell;
@@ -30,6 +30,19 @@ enum TaskStatus {
     Done,
 }
 
+#[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
+enum Priority {
+    Low,
+    Medium,
+    High,
+}
+
+impl Default for Priority {
+    fn default() -> Self {
+        Priority::Medium // Default priority for new tasks
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 struct Task {
     id: Uuid,
@@ -37,6 +50,7 @@ struct Task {
     status: TaskStatus,
     category: Option<String>,
     due_time: Option<NaiveDateTime>,
+    priority: Priority, // New field for priority
 }
 
 struct AppState {
@@ -51,9 +65,33 @@ impl AppState {
         if self.file_path.exists() {
             let file = fs::File::open(&self.file_path)?;
             let reader = BufReader::new(file);
-            self.tasks = serde_json::from_reader(reader)?;
+            // Attempt to deserialize, handle older versions without 'priority' field
+            match serde_json::from_reader::<_, Vec<Task>>(reader) {
+                Ok(loaded_tasks) => {
+                    self.tasks = loaded_tasks;
+                }
+                Err(e) => {
+                    eprintln!(
+                        "Warning: Failed to load tasks with new schema: {}. Attempting to load with old schema and assign default priority.",
+                        e
+                    );
+                    let file = fs::File::open(&self.file_path)?; // Re-open file
+                    let reader = BufReader::new(file);
+                    let old_tasks: Vec<OldTask> = serde_json::from_reader(reader)?;
+                    self.tasks = old_tasks
+                        .into_iter()
+                        .map(|old_task| Task {
+                            id: old_task.id,
+                            description: old_task.description,
+                            status: old_task.status,
+                            category: old_task.category,
+                            due_time: old_task.due_time,
+                            priority: Priority::Low, // Assign default priority
+                        })
+                        .collect();
+                }
+            }
         } else {
-            // If file doesn't exist, start with empty tasks
             self.tasks = Vec::new();
         }
         Ok(())
@@ -67,13 +105,14 @@ impl AppState {
     }
 
     fn add_task(&mut self, full_description: String) {
-        let (description, category, due_time) = parse_task_description(&full_description);
+        let (description, category, due_time, priority) = parse_task_description(&full_description);
         let new_task = Task {
             id: Uuid::new_v4(),
             description,
             status: TaskStatus::Todo,
             category,
             due_time,
+            priority: priority.unwrap_or_default(),
         };
         self.tasks.push(new_task);
         self.save_tasks()
@@ -103,23 +142,62 @@ impl AppState {
     }
 }
 
-fn parse_task_description(description: &str) -> (String, Option<String>, Option<NaiveDateTime>) {
+#[derive(Debug, Clone, Serialize, Deserialize)]
+struct OldTask {
+    id: Uuid,
+    description: String,
+    status: TaskStatus,
+    category: Option<String>,
+    due_time: Option<NaiveDateTime>,
+}
+
+fn parse_task_description(
+    description: &str,
+) -> (
+    String,
+    Option<String>,
+    Option<NaiveDateTime>,
+    Option<Priority>,
+) {
     lazy_static! {
         static ref CATEGORY_RE: Regex = Regex::new(r"(?i)#([a-zA-Z0-9_]+)").unwrap();
         static ref TIME_RE: Regex = Regex::new(r"#(\d{4}-\d{2}-\d{2}_\d{2}:\d{2})").unwrap();
+        static ref PRIORITY_RE: Regex = Regex::new(r"(?i)#(p[1-3]|high|medium|low)").unwrap();
     }
 
     let mut remaining_description = description.to_string();
     let mut category: Option<String> = None;
     let mut due_time: Option<NaiveDateTime> = None;
+    let mut priority: Option<Priority> = None;
+
+    // Extract priority
+    if let Some(captures) = PRIORITY_RE.captures(&remaining_description) {
+        if let Some(p_match) = captures.get(1) {
+            priority = match p_match.as_str().to_lowercase().as_str() {
+                "p1" | "high" => Some(Priority::High),
+                "p2" | "medium" => Some(Priority::Medium),
+                "p3" | "low" => Some(Priority::Low),
+                _ => None,
+            };
+            remaining_description = PRIORITY_RE
+                .replace_all(&remaining_description, "")
+                .to_string();
+        }
+    }
 
     // Extract category
     if let Some(captures) = CATEGORY_RE.captures(&remaining_description) {
         if let Some(cat_match) = captures.get(1) {
-            category = Some(cat_match.as_str().to_string());
-            remaining_description = CATEGORY_RE
-                .replace_all(&remaining_description, "")
-                .to_string();
+            let cat_str = cat_match.as_str().to_lowercase();
+            if !matches!(
+                cat_str.as_str(),
+                "p1" | "p2" | "p3" | "high" | "medium" | "low"
+            ) {
+                category = Some(cat_str);
+                remaining_description = CATEGORY_RE
+                    .replace_all(&remaining_description, "")
+                    .to_string();
+            }
         }
     }
 
@@ -134,7 +212,12 @@ fn parse_task_description(description: &str) -> (String, Option<String>, Option<
         }
     }
 
-    (remaining_description.trim().to_string(), category, due_time)
+    (
+        remaining_description.trim().to_string(),
+        category,
+        due_time,
+        priority,
+    )
 }
 
 // --- Main Application Function ---
@@ -186,7 +269,7 @@ fn build_ui(app: &Application, app_state: Rc<RefCell<AppState>>) {
 
     let main_vbox = Box::builder()
         .orientation(Orientation::Vertical)
-        .spacing(20)
+        .spacing(10)
         .margin_top(20)
         .margin_bottom(20)
         .margin_start(20)
@@ -234,7 +317,7 @@ fn build_ui(app: &Application, app_state: Rc<RefCell<AppState>>) {
     input_hbox.add_css_class("input-area");
 
     let entry = Entry::builder()
-        .placeholder_text("Enter a new task...")
+        .placeholder_text("Enter a new task (e.g., Buy milk #home #P2 #2025-07-05_10:00)...")
         .hexpand(true)
         .build();
     entry.add_css_class("task-entry");
@@ -250,12 +333,9 @@ fn build_ui(app: &Application, app_state: Rc<RefCell<AppState>>) {
     let filter_hbox = Box::builder()
         .orientation(Orientation::Horizontal)
         .spacing(10)
-        .margin_top(15)
-        .margin_bottom(15)
-        .margin_start(20)
-        .margin_end(20)
         .build();
     filter_hbox.add_css_class("input-area");
+    filter_hbox.add_css_class("filter-hbox");
 
     let category_filter_entry = Entry::builder()
         .placeholder_text("Filter by category (e.g., work)")
@@ -330,11 +410,11 @@ fn build_ui(app: &Application, app_state: Rc<RefCell<AppState>>) {
                 // Category filter
                 if let Some(filter_cat) = &app_state_borrowed.current_category_filter {
                     if let Some(task_cat) = &task.category {
-                        if !task_cat.to_lowercase().contains(filter_cat) { // Case-insensitive contains check
+                        if !task_cat.contains(filter_cat) {
                             matches_filter = false;
                         }
                     } else {
-                        matches_filter = false; // Task has no category, but filter is set
+                        matches_filter = false;
                     }
                 }
 
@@ -345,7 +425,7 @@ fn build_ui(app: &Application, app_state: Rc<RefCell<AppState>>) {
                             matches_filter = false;
                         }
                     } else {
-                        matches_filter = false; // Task has no due time, but filter is set
+                        matches_filter = false;
                     }
                 }
 
@@ -415,7 +495,7 @@ fn build_ui(app: &Application, app_state: Rc<RefCell<AppState>>) {
                     Ok(date) => app_state_mut.current_due_date_filter = Some(date),
                     Err(_) => {
                         println!("Invalid date format for filter: {}", date_text);
-                        app_state_mut.current_due_date_filter = None; 
+                        app_state_mut.current_due_date_filter = None;
                     }
                 }
             }
@@ -490,6 +570,17 @@ fn create_task_row(
         .build();
     hbox.add_css_class("task-row-hbox");
 
+    // Display Priority
+    let priority_label = Label::builder()
+        .label(&format!("{:?}", task.priority))
+        .halign(gtk::Align::Start)
+        .build();
+    priority_label.add_css_class(&format!(
+        "priority-{}",
+        format!("{:?}", task.priority).to_lowercase()
+    ));
+    hbox.append(&priority_label);
+
     // Start with the basic description
     let mut display_text = task.description.clone();
 
@@ -504,7 +595,7 @@ fn create_task_row(
     }
 
     let task_label = Label::builder()
-        .label(&display_text) // Use the combined display_text
+        .label(&display_text)
         .halign(gtk::Align::Start)
         .hexpand(true)
         .build();
@@ -531,7 +622,7 @@ fn create_task_row(
     let delete_button = Button::builder().label("Delete").build();
     delete_button.add_css_class("delete-button-small");
 
-    // --- Connect Signals for this row ---
+    // Connect Signals for this row
     let refresh_ui_for_row = glib::clone!(@strong todo_list_box_rc,
                                     @strong doing_list_box_rc,
                                     @strong done_list_box_rc,
@@ -576,32 +667,53 @@ fn create_task_row(
         dialog.add_css_class("edit-dialog");
 
         let content_area = dialog.content_area();
+        let edit_vbox = Box::builder().orientation(Orientation::Vertical).spacing(10).build();
+        content_area.append(&edit_vbox);
+
         let edit_entry = Entry::builder()
             .text(&edit_task.description)
+            .placeholder_text("Task description")
             .hexpand(true)
             .build();
         edit_entry.add_css_class("task-entry");
-        content_area.append(&edit_entry);
+        edit_vbox.append(&edit_entry);
+
+        // Priority ComboBox
+        let priority_combo = ComboBoxText::new();
+        priority_combo.append_text("Low");
+        priority_combo.append_text("Medium");
+        priority_combo.append_text("High");
+        priority_combo.set_active_id(Some(&format!("{:?}", edit_task.priority))); // Set current priority
+        edit_vbox.append(&priority_combo);
+
+
         dialog.set_default_response(ResponseType::Ok);
 
-        dialog.connect_response(glib::clone!(@strong app_state, @strong refresh_ui_for_row, @strong edit_entry, @strong edit_task => move |dialog, response| {
+        dialog.connect_response(glib::clone!(@strong app_state, @strong refresh_ui_for_row, @strong edit_entry, @strong priority_combo, @strong edit_task => move |dialog, response| {
             if response == ResponseType::Ok {
-                let new_full_description = edit_entry.text().to_string();
-                if !new_full_description.is_empty() {
-                    let (new_description_only, new_category, new_due_time) = parse_task_description(&new_full_description);
+                let new_description_text = edit_entry.text().to_string();
+                let new_priority_text = priority_combo.active_text().map(|t| t.to_string());
 
-                    // Update the task fields
+                if !new_description_text.is_empty() {
+                    let (parsed_description, parsed_category, parsed_due_time, parsed_priority_from_text) = parse_task_description(&new_description_text);
+
                     app_state.borrow_mut().tasks
                         .iter_mut()
                         .find(|t| t.id == edit_task.id)
                         .map(|t| {
-                            t.description = new_description_only;
-                            t.category = new_category;
-                            t.due_time = new_due_time;
+                            t.description = parsed_description;
+                            t.category = parsed_category;
+                            t.due_time = parsed_due_time;
+                            t.priority = new_priority_text.and_then(|p_str| match p_str.to_lowercase().as_str() {
+                                "low" => Some(Priority::Low),
+                                "medium" => Some(Priority::Medium),
+                                "high" => Some(Priority::High),
+                                _ => None,
+                            }).or(parsed_priority_from_text).unwrap_or(t.priority.clone());
                         });
 
                     app_state.borrow().save_tasks().expect("Failed to save tasks after editing");
-                    refresh_ui_for_row(Rc::clone(&app_state)); // Refresh the entire UI
+                    refresh_ui_for_row(Rc::clone(&app_state));
                 }
             }
             dialog.close();
