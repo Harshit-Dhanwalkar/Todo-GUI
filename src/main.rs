@@ -18,8 +18,11 @@ use serde::{Deserialize, Serialize};
 
 use uuid::Uuid;
 
-// --- Data Structures ---
+use chrono::{Local, NaiveDate, NaiveDateTime};
+use lazy_static::lazy_static;
+use regex::Regex;
 
+// --- Data Structures ---
 #[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
 enum TaskStatus {
     Todo,
@@ -32,11 +35,15 @@ struct Task {
     id: Uuid,
     description: String,
     status: TaskStatus,
+    category: Option<String>,
+    due_time: Option<NaiveDateTime>,
 }
 
 struct AppState {
     tasks: Vec<Task>,
     file_path: PathBuf,
+    current_category_filter: Option<String>,
+    current_due_date_filter: Option<NaiveDate>,
 }
 
 impl AppState {
@@ -59,11 +66,14 @@ impl AppState {
         Ok(())
     }
 
-    fn add_task(&mut self, description: String) {
+    fn add_task(&mut self, full_description: String) {
+        let (description, category, due_time) = parse_task_description(&full_description);
         let new_task = Task {
             id: Uuid::new_v4(),
             description,
             status: TaskStatus::Todo,
+            category,
+            due_time,
         };
         self.tasks.push(new_task);
         self.save_tasks()
@@ -93,13 +103,48 @@ impl AppState {
     }
 }
 
-// --- Main Application Function ---
+fn parse_task_description(description: &str) -> (String, Option<String>, Option<NaiveDateTime>) {
+    lazy_static! {
+        static ref CATEGORY_RE: Regex = Regex::new(r"(?i)#([a-zA-Z0-9_]+)").unwrap();
+        static ref TIME_RE: Regex = Regex::new(r"#(\d{4}-\d{2}-\d{2}_\d{2}:\d{2})").unwrap();
+    }
 
+    let mut remaining_description = description.to_string();
+    let mut category: Option<String> = None;
+    let mut due_time: Option<NaiveDateTime> = None;
+
+    // Extract category
+    if let Some(captures) = CATEGORY_RE.captures(&remaining_description) {
+        if let Some(cat_match) = captures.get(1) {
+            category = Some(cat_match.as_str().to_string());
+            remaining_description = CATEGORY_RE
+                .replace_all(&remaining_description, "")
+                .to_string();
+        }
+    }
+
+    // Extract time
+    if let Some(captures) = TIME_RE.captures(&remaining_description) {
+        if let Some(time_str_match) = captures.get(1) {
+            if let Ok(dt) = NaiveDateTime::parse_from_str(time_str_match.as_str(), "%Y-%m-%d_%H:%M")
+            {
+                due_time = Some(dt);
+                remaining_description = TIME_RE.replace_all(&remaining_description, "").to_string();
+            }
+        }
+    }
+
+    (remaining_description.trim().to_string(), category, due_time)
+}
+
+// --- Main Application Function ---
 fn main() {
     let data_file_path = PathBuf::from("todo_data.json");
     let app_state = Rc::new(RefCell::new(AppState {
         tasks: Vec::new(),
         file_path: data_file_path,
+        current_category_filter: None,
+        current_due_date_filter: None,
     }));
 
     if let Err(e) = app_state.borrow_mut().load_tasks() {
@@ -120,7 +165,6 @@ fn main() {
 }
 
 // --- UI Building Function ---
-
 fn build_ui(app: &Application, app_state: Rc<RefCell<AppState>>) {
     let provider = CssProvider::new();
     provider.load_from_path("style.css");
@@ -150,10 +194,37 @@ fn build_ui(app: &Application, app_state: Rc<RefCell<AppState>>) {
         .build();
     main_vbox.add_css_class("app-container");
 
+    // Create an HBox to hold the title and clock
+    let header_hbox = Box::builder()
+        .orientation(Orientation::Horizontal)
+        .spacing(10)
+        .build();
+    header_hbox.add_css_class("header-hbox");
+
     // Title Label
-    let title_label = Label::builder().label("My Awesome To-Do List").build();
+    let title_label = Label::builder()
+        .label("To-Do List")
+        .halign(gtk::Align::Start)
+        .hexpand(true)
+        .build();
     title_label.add_css_class("title-label");
-    main_vbox.append(&title_label);
+    header_hbox.append(&title_label);
+
+    // Clock Label
+    let clock_label = Label::builder()
+        .halign(gtk::Align::End)
+        .margin_end(20)
+        .build();
+    clock_label.add_css_class("clock-label");
+    header_hbox.append(&clock_label);
+    main_vbox.append(&header_hbox);
+
+    let clock_label_clone = clock_label.clone();
+    glib::timeout_add_seconds_local(1, move || {
+        let now = Local::now();
+        clock_label_clone.set_text(&now.format("%I:%M:%S %p").to_string());
+        glib::ControlFlow::Continue
+    });
 
     // Input area for new tasks
     let input_hbox = Box::builder()
@@ -174,6 +245,41 @@ fn build_ui(app: &Application, app_state: Rc<RefCell<AppState>>) {
     input_hbox.append(&entry);
     input_hbox.append(&add_button);
     main_vbox.append(&input_hbox);
+
+    // Filter area
+    let filter_hbox = Box::builder()
+        .orientation(Orientation::Horizontal)
+        .spacing(10)
+        .margin_top(15)
+        .margin_bottom(15)
+        .margin_start(20)
+        .margin_end(20)
+        .build();
+    filter_hbox.add_css_class("input-area");
+
+    let category_filter_entry = Entry::builder()
+        .placeholder_text("Filter by category (e.g., work)")
+        .hexpand(true)
+        .build();
+    category_filter_entry.add_css_class("task-entry");
+
+    let due_date_filter_entry = Entry::builder()
+        .placeholder_text("Filter by due date (YYYY-MM-DD)")
+        .hexpand(true)
+        .build();
+    due_date_filter_entry.add_css_class("task-entry");
+
+    let apply_filter_button = Button::builder().label("Apply Filters").build();
+    apply_filter_button.add_css_class("action-button");
+
+    let clear_filters_button = Button::builder().label("Clear Filters").build();
+    clear_filters_button.add_css_class("action-button-small");
+
+    filter_hbox.append(&category_filter_entry);
+    filter_hbox.append(&due_date_filter_entry);
+    filter_hbox.append(&apply_filter_button);
+    filter_hbox.append(&clear_filters_button);
+    main_vbox.append(&filter_hbox);
 
     // Horizontal box for the three columns (Todo, Doing, Done)
     let columns_hbox = Box::builder()
@@ -203,18 +309,6 @@ fn build_ui(app: &Application, app_state: Rc<RefCell<AppState>>) {
     );
     done_list_box_rc.add_css_class("task-list-box");
 
-    columns_hbox.append(&create_task_column("TO DO", &todo_list_box_rc));
-    columns_hbox.append(&create_task_column("DOING", &doing_list_box_rc));
-    columns_hbox.append(&create_task_column("DONE", &done_list_box_rc));
-
-    main_vbox.append(&columns_hbox);
-
-    window.set_child(Some(&main_vbox));
-    window.present();
-
-    // --- Callback Functions ---
-
-    // Function to refresh all list boxes based on current app state
     let refresh_ui = Rc::new(
         glib::clone!(@strong todo_list_box_rc, @strong doing_list_box_rc, @strong done_list_box_rc, @strong window_rc => move |app_state: Rc<RefCell<AppState>>| {
             // Clear all list boxes
@@ -228,24 +322,60 @@ fn build_ui(app: &Application, app_state: Rc<RefCell<AppState>>) {
                 done_list_box_rc.remove(&child);
             }
 
-            // Iterate through tasks and re-populate lists
+            // Iterate through tasks and re-populate lists, applying filters
             for task in app_state.borrow().tasks.iter() {
-                let task_row = create_task_row(
-                    task.clone(),
-                    Rc::clone(&app_state),
-                    Rc::clone(&todo_list_box_rc),
-                    Rc::clone(&doing_list_box_rc),
-                    Rc::clone(&done_list_box_rc),
-                    Rc::clone(&window_rc)
-                );
-                match task.status {
-                    TaskStatus::Todo => todo_list_box_rc.append(&task_row),
-                    TaskStatus::Doing => doing_list_box_rc.append(&task_row),
-                    TaskStatus::Done => done_list_box_rc.append(&task_row),
+                let app_state_borrowed = app_state.borrow();
+                let mut matches_filter = true;
+
+                // Category filter
+                if let Some(filter_cat) = &app_state_borrowed.current_category_filter {
+                    if let Some(task_cat) = &task.category {
+                        if !task_cat.to_lowercase().contains(filter_cat) { // Case-insensitive contains check
+                            matches_filter = false;
+                        }
+                    } else {
+                        matches_filter = false; // Task has no category, but filter is set
+                    }
+                }
+
+                // Due date filter
+                if let Some(filter_date) = &app_state_borrowed.current_due_date_filter {
+                    if let Some(task_due_time) = &task.due_time {
+                        if task_due_time.date() != *filter_date {
+                            matches_filter = false;
+                        }
+                    } else {
+                        matches_filter = false; // Task has no due time, but filter is set
+                    }
+                }
+
+                if matches_filter {
+                    let task_row = create_task_row(
+                        task.clone(),
+                        Rc::clone(&app_state),
+                        Rc::clone(&todo_list_box_rc),
+                        Rc::clone(&doing_list_box_rc),
+                        Rc::clone(&done_list_box_rc),
+                        Rc::clone(&window_rc)
+                    );
+                    match task.status {
+                        TaskStatus::Todo => todo_list_box_rc.append(&task_row),
+                        TaskStatus::Doing => doing_list_box_rc.append(&task_row),
+                        TaskStatus::Done => done_list_box_rc.append(&task_row),
+                    }
                 }
             }
         }),
     );
+
+    columns_hbox.append(&create_task_column("TO DO", &todo_list_box_rc));
+    columns_hbox.append(&create_task_column("DOING", &doing_list_box_rc));
+    columns_hbox.append(&create_task_column("DONE", &done_list_box_rc));
+
+    main_vbox.append(&columns_hbox);
+
+    window.set_child(Some(&main_vbox));
+    window.present();
 
     // Initial UI refresh
     refresh_ui(Rc::clone(&app_state));
@@ -259,6 +389,58 @@ fn build_ui(app: &Application, app_state: Rc<RefCell<AppState>>) {
                 entry.set_text(""); // Clear the input field
                 refresh_ui(Rc::clone(&app_state));
             }
+        }),
+    );
+
+    // Apply Filter button handler
+    apply_filter_button.connect_clicked(
+        glib::clone!(@weak category_filter_entry, @weak due_date_filter_entry, @strong app_state, @strong refresh_ui => move |_| {
+            let category_text = category_filter_entry.text().to_string();
+            let date_text = due_date_filter_entry.text().to_string();
+
+            let mut app_state_mut = app_state.borrow_mut();
+
+            // Update category filter
+            if category_text.is_empty() {
+                app_state_mut.current_category_filter = None;
+            } else {
+                app_state_mut.current_category_filter = Some(category_text.to_lowercase());
+            }
+
+            // Update due date filter
+            if date_text.is_empty() {
+                app_state_mut.current_due_date_filter = None;
+            } else {
+                match NaiveDate::parse_from_str(&date_text, "%Y-%m-%d") {
+                    Ok(date) => app_state_mut.current_due_date_filter = Some(date),
+                    Err(_) => {
+                        println!("Invalid date format for filter: {}", date_text);
+                        app_state_mut.current_due_date_filter = None; 
+                    }
+                }
+            }
+
+            // Trigger UI refresh
+            drop(app_state_mut);
+            refresh_ui(Rc::clone(&app_state));
+        }),
+    );
+
+    // Clear Filters button handler
+    clear_filters_button.connect_clicked(
+        glib::clone!(@weak category_filter_entry, @weak due_date_filter_entry, @strong app_state, @strong refresh_ui => move |_| {
+            // Clear entry fields
+            category_filter_entry.set_text("");
+            due_date_filter_entry.set_text("");
+
+            // Clear filters in app_state
+            let mut app_state_mut = app_state.borrow_mut();
+            app_state_mut.current_category_filter = None;
+            app_state_mut.current_due_date_filter = None;
+            drop(app_state_mut);
+
+            // Trigger UI refresh
+            refresh_ui(Rc::clone(&app_state));
         }),
     );
 }
@@ -288,7 +470,7 @@ fn create_task_column(title: &str, list_box: &ListBox) -> Box {
     vbox
 }
 
-/// Creates a ListBoxRow for a single task.
+// Creates a ListBoxRow for a single task.
 fn create_task_row(
     task: Task,
     app_state: Rc<RefCell<AppState>>,
@@ -308,8 +490,21 @@ fn create_task_row(
         .build();
     hbox.add_css_class("task-row-hbox");
 
+    // Start with the basic description
+    let mut display_text = task.description.clone();
+
+    // Append category if present
+    if let Some(category) = &task.category {
+        display_text.push_str(&format!(" #{}", category));
+    }
+
+    // Append due time if present
+    if let Some(due_time) = &task.due_time {
+        display_text.push_str(&format!(" (Due: {})", due_time.format("%Y-%m-%d %H:%M")));
+    }
+
     let task_label = Label::builder()
-        .label(&task.description)
+        .label(&display_text) // Use the combined display_text
         .halign(gtk::Align::Start)
         .hexpand(true)
         .build();
@@ -337,7 +532,6 @@ fn create_task_row(
     delete_button.add_css_class("delete-button-small");
 
     // --- Connect Signals for this row ---
-
     let refresh_ui_for_row = glib::clone!(@strong todo_list_box_rc,
                                     @strong doing_list_box_rc,
                                     @strong done_list_box_rc,
@@ -383,7 +577,7 @@ fn create_task_row(
 
         let content_area = dialog.content_area();
         let edit_entry = Entry::builder()
-            .text(&task_label.text().to_string())
+            .text(&edit_task.description)
             .hexpand(true)
             .build();
         edit_entry.add_css_class("task-entry");
@@ -392,10 +586,21 @@ fn create_task_row(
 
         dialog.connect_response(glib::clone!(@strong app_state, @strong refresh_ui_for_row, @strong edit_entry, @strong edit_task => move |dialog, response| {
             if response == ResponseType::Ok {
-                let new_description = edit_entry.text().to_string();
-                if !new_description.is_empty() {
-                    // Use edit_task.id here
-                    app_state.borrow_mut().update_task_description(edit_task.id, new_description);
+                let new_full_description = edit_entry.text().to_string();
+                if !new_full_description.is_empty() {
+                    let (new_description_only, new_category, new_due_time) = parse_task_description(&new_full_description);
+
+                    // Update the task fields
+                    app_state.borrow_mut().tasks
+                        .iter_mut()
+                        .find(|t| t.id == edit_task.id)
+                        .map(|t| {
+                            t.description = new_description_only;
+                            t.category = new_category;
+                            t.due_time = new_due_time;
+                        });
+
+                    app_state.borrow().save_tasks().expect("Failed to save tasks after editing");
                     refresh_ui_for_row(Rc::clone(&app_state)); // Refresh the entire UI
                 }
             }

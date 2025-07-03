@@ -1,46 +1,53 @@
-/* General Application Container */
 .app-container {
-  background: linear-gradient(to bottom right, #e0f2f7, #c1e7f0);
-  border-radius: 20px;
-  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15);
-  padding: 30px;
+  background: linear-gradient(to bottom right, #2c3e50, #1a252f);
+  border-radius: 15px;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.3);
+  padding: 20px;
 }
 
-/* Glassmorphism Effect Base */
+.header-hbox {
+  margin-bottom: 15px;
+}
+
 .input-area,
 .column-container .column-scroll-window,
 .task-row {
-  background: rgba(255, 255, 255, 0.15);
-  backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.3);
-  border-radius: 15px;
-  box-shadow: 0 8px 30px 0 rgba(31, 38, 135, 0.25);
-  padding: 15px;
+  background: rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 12px;
+  box-shadow: 0 6px 20px 0 rgba(0, 0, 0, 0.25);
+  padding: 10px;
 }
 
-/* Specific styling for the input box */
 .input-area {
-  margin-bottom: 25px;
-  padding: 15px 20px;
-  border-radius: 18px;
+  margin-bottom: 10px;
+  padding: 10px 15px;
+  border-radius: 15px;
 }
 
-/* Column Containers */
+.filter-hbox {
+  margin-top: 10px;
+  margin-bottom: 15px;
+  padding: 10px 15px;
+  border-radius: 15px;
+}
+
 .column-container {
   background: transparent;
   padding: 0;
   border: none;
-  margin-right: 15px;
-  margin-left: 15px;
+  margin-right: 10px;
+  margin-left: 10px;
 }
 .column-container:last-child {
   margin-right: 0;
 }
 
 .column-container .column-scroll-window {
-  padding: 10px;
-  border-radius: 15px;
-  background: rgba(255, 255, 255, 0.1);
+  padding: 8px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.05);
 }
 
 .task-list-box {
@@ -49,154 +56,162 @@
   padding: 0;
 }
 
-/* Title Labels */
 .title-label {
-  font-size: 2.8em;
+  font-size: 2.2em;
   font-weight: bold;
-  color: #2c3e50;
-  margin-bottom: 30px;
-  text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.15);
-  text-align: center;
+  color: #ecf0f1;
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.3);
+  text-align: start;
+  padding-left: 10px;
 }
 
 .column-title {
-  font-size: 1.5em;
+  font-size: 1.3em;
   font-weight: 600;
-  color: #34495e;
-  margin-bottom: 15px;
+  color: #bdc3c7;
+  margin-bottom: 10px;
   text-align: center;
 }
 
-/* Entry Widget */
 .task-entry {
-  font-size: 1.1em;
-  padding: 14px 18px;
-  border: 1px solid #a0c4ff;
-  border-radius: 12px;
-  background-color: rgba(255, 255, 255, 0.8);
-  color: #333;
+  font-size: 1em;
+  padding: 10px 15px;
+  border: 1px solid #4a69bd;
+  border-radius: 10px;
+  background-color: rgba(0, 0, 0, 0.3);
+  color: #ecf0f1;
   transition: all 0.2s ease-in-out;
 }
 .task-entry:focus {
-  border-color: #4a90e2;
-  box-shadow: 0 0 10px rgba(74, 144, 226, 0.4);
-  background-color: rgba(255, 255, 255, 0.95);
+  border-color: #6a82fb;
+  box-shadow: 0 0 8px rgba(106, 130, 251, 0.4);
+  background-color: rgba(0, 0, 0, 0.4);
+}
+.task-entry::placeholder {
+  color: rgba(236, 240, 241, 0.6);
 }
 
-/* Main Action Button (Add Task) */
 .action-button {
   background: linear-gradient(145deg, #6a82fb, #fc5c7d);
   color: white;
   font-weight: bold;
-  font-size: 1.2em;
-  padding: 15px 30px;
-  border-radius: 12px;
+  font-size: 1.1em;
+  padding: 10px 20px;
+  border-radius: 10px;
   border: none;
-  box-shadow: 0 5px 20px rgba(0, 0, 0, 0.25);
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
   transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
 }
 .action-button:hover {
-  transform: translateY(-3px);
-  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.35);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
   background: linear-gradient(145deg, #7b93ff, #fd738f);
 }
 .action-button:active {
   transform: translateY(0);
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 1px 8px rgba(0, 0, 0, 0.15);
 }
 
-/* Smaller Action Buttons */
 .action-button-small {
-  background-color: #5cb85c;
+  background: linear-gradient(145deg, #2ecc71, #27ae60);
   color: white;
-  font-size: 0.9em;
-  padding: 8px 12px;
-  border-radius: 8px;
+  font-size: 0.85em;
+  padding: 6px 10px;
+  border-radius: 6px;
   border: none;
-  margin-left: 5px;
-  transition: background-color 0.2s ease;
+  margin-left: 4px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  transition: all 0.2s ease-in-out;
 }
 .action-button-small:hover {
-  background-color: #4cae4c;
+  background: linear-gradient(145deg, #27ae60, #2ecc71);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+}
+.action-button-small:active {
+  transform: translateY(0);
+  box-shadow: 0 1px 5px rgba(0, 0, 0, 0.1);
 }
 
 .delete-button-small {
-  background-color: #d9534f;
+  background: linear-gradient(145deg, #e74c3c, #c0392b);
   color: white;
-  font-size: 0.9em;
-  padding: 8px 12px;
-  border-radius: 8px;
+  font-size: 0.85em;
+  padding: 6px 10px;
+  border-radius: 6px;
   border: none;
-  margin-left: 5px;
-  transition: background-color 0.2s ease;
+  margin-left: 4px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  transition: all 0.2s ease-in-out;
 }
 .delete-button-small:hover {
-  background-color: #c9302c;
+  background: linear-gradient(145deg, #c0392b, #e74c3c);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+}
+.delete-button-small:active {
+  transform: translateY(0);
+  box-shadow: 0 1px 5px rgba(0, 0, 0, 0.1);
 }
 
-/* Task Row */
 .task-row {
-  background: rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.05);
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-  margin-bottom: 8px;
-  border-radius: 10px;
+  margin-bottom: 6px;
+  border-radius: 8px;
   padding: 0;
-  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.15);
   transition: all 0.2s ease-in-out;
 }
 .task-row:hover {
-  background: rgba(255, 255, 255, 0.15);
-  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
-  transform: translateY(-2px);
+  background: rgba(255, 255, 255, 0.1);
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+  transform: translateY(-1px);
 }
 .task-row:last-child {
   margin-bottom: 0;
 }
 
 .task-description {
-  font-size: 1.05em;
-  color: #333;
-  padding: 5px 0;
+  font-size: 0.95em;
+  color: #ecf0f1;
+  padding: 4px 0;
 }
 
-/* Completed Task Styling */
 .completed-task {
   text-decoration: line-through;
-  color: #777;
+  color: #95a5a6;
   opacity: 0.7;
 }
 
-/* Dialog Styling */
 .edit-dialog,
 .confirm-dialog {
-  background: rgba(255, 255, 255, 0.9);
-  backdrop-filter: blur(8px);
-  border: 1px solid rgba(255, 255, 255, 0.5);
-  border-radius: 15px;
-  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+  background: rgba(0, 0, 0, 0.8);
+  backdrop-filter: blur(6px);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 12px;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.4);
 }
 .edit-dialog .title,
 .confirm-dialog .title {
-  font-size: 1.3em;
+  font-size: 1.2em;
   font-weight: bold;
-  color: #2c3e50;
-  margin-bottom: 15px;
+  color: #ecf0f1;
+  margin-bottom: 10px;
 }
 .edit-dialog .content {
-  padding: 20px;
+  padding: 15px;
 }
 .edit-dialog .entry {
-  margin-top: 10px;
-  margin-bottom: 20px;
+  margin-top: 8px;
+  margin-bottom: 15px;
 }
 .edit-dialog .button,
 .confirm-dialog .button {
-  background: linear-gradient(to right, #4caf50, #8bc34a);
-  color: white;
-  padding: 10px 20px;
-  border-radius: 8px;
+  padding: 8px 15px;
+  border-radius: 6px;
   border: none;
-  margin-left: 10px;
+  margin-left: 8px;
 }
 .edit-dialog .button:hover,
 .confirm-dialog .button:hover {
@@ -206,12 +221,30 @@
 .confirm-dialog .button:active {
   transform: translateY(1px);
 }
-/* Style for Cancel button in dialogs */
+.edit-dialog .button:first-child,
+.confirm-dialog .button:first-child {
+  background: linear-gradient(to right, #2ecc71, #27ae60);
+  color: white;
+}
+.edit-dialog .button:first-child:hover,
+.confirm-dialog .button:first-child:hover {
+  background: linear-gradient(to right, #27ae60, #2ecc71);
+}
+
 .edit-dialog .button:nth-child(2),
 .confirm-dialog .button:nth-child(2) {
-  background: linear-gradient(to right, #f44336, #e57373);
+  background: linear-gradient(to right, #e74c3c, #c0392b);
+  color: white;
 }
 .edit-dialog .button:nth-child(2):hover,
 .confirm-dialog .button:nth-child(2):hover {
-  filter: brightness(1.1);
+  background: linear-gradient(to right, #c0392b, #e74c3c);
+}
+
+.clock-label {
+  font-size: 1.5em;
+  font-weight: 500;
+  color: #ecf0f1;
+  margin-top: 3px;
+  padding-right: 10px;
 }
