@@ -37,241 +37,287 @@
   background: transparent;
   padding: 0;
   border: none;
-  margin-right: 10px;
-  margin-left: 10px;
+  margin-right: 10px; /* Space between columns */
 }
+
 .column-container:last-child {
-  margin-right: 0;
-}
-
-.column-container .column-scroll-window {
-  padding: 8px;
-  border-radius: 12px;
-  background: rgba(255, 255, 255, 0.05);
-}
-
-.task-list-box {
-  background: transparent;
-  border: none;
-  padding: 0;
-}
-
-.title-label {
-  font-size: 2.2em;
-  font-weight: bold;
-  color: #ecf0f1;
-  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.3);
-  text-align: start;
-  padding-left: 10px;
+  margin-right: 0; /* No margin on the last column */
 }
 
 .column-title {
-  font-size: 1.3em;
-  font-weight: 600;
-  color: #bdc3c7;
-  margin-bottom: 10px;
+  font-size: 1.4em;
+  font-weight: bold;
+  color: #ecf0f1;
   text-align: center;
+  margin-bottom: 10px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  background-color: rgba(0, 0, 0, 0.2);
+  padding: 8px 15px;
+  border-radius: 8px;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
 }
 
-.task-entry {
-  font-size: 1em;
-  padding: 10px 15px;
-  border: 1px solid #4a69bd;
-  border-radius: 10px;
-  background-color: rgba(0, 0, 0, 0.3);
+.task-list-box {
+  background: transparent; /* Listbox itself should be transparent */
+  border: none;
+  padding: 5px;
+}
+
+.task-row {
+  margin-bottom: 8px;
+  padding: 8px 12px;
+  transition: all 0.2s ease-in-out;
+  cursor: pointer;
+}
+
+.task-row:hover {
+  background: rgba(255, 255, 255, 0.15);
+  box-shadow: 0 8px 25px 0 rgba(0, 0, 0, 0.35);
+  transform: translateY(-2px);
+}
+
+.task-description {
   color: #ecf0f1;
+  font-size: 1.05em;
+  font-weight: 400;
+  margin-right: 10px;
+}
+
+.completed-task {
+  text-decoration: line-through;
+  color: #95a5a6; /* Lighter grey for completed tasks */
+  font-style: italic;
+}
+
+/* Priority Labels */
+.priority-low {
+  background-color: #27ae60; /* Green */
+  color: white;
+  padding: 3px 8px;
+  border-radius: 5px;
+  font-size: 0.85em;
+  font-weight: bold;
+  margin-right: 8px;
+}
+
+.priority-medium {
+  background-color: #f39c12; /* Orange */
+  color: white;
+  padding: 3px 8px;
+  border-radius: 5px;
+  font-size: 0.85em;
+  font-weight: bold;
+  margin-right: 8px;
+}
+
+.priority-high {
+  background-color: #e74c3c; /* Red */
+  color: white;
+  padding: 3px 8px;
+  border-radius: 5px;
+  font-size: 0.85em;
+  font-weight: bold;
+  margin-right: 8px;
+}
+
+.title-label {
+  font-size: 2.8em;
+  font-weight: 700;
+  color: #ecf0f1;
+  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+  margin-left: 10px;
+}
+
+/* Input Fields (Entry) */
+.task-entry {
+  background-color: rgba(255, 255, 255, 0.15);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 8px;
+  color: #ecf0f1;
+  padding: 10px 15px;
+  font-size: 1em;
+  caret-color: #3498db; /* Blue caret */
+}
+
+.task-entry:focus {
+  border-color: #3498db; /* Blue border on focus */
+  box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.5);
+  background-color: rgba(255, 255, 255, 0.2);
+}
+
+.task-entry text {
+  color: #ecf0f1; /* Text color inside entry */
+}
+
+/* ComboBoxText Styling - Targeting specific classes */
+.filter-combo,
+.edit-priority-combo {
+  background-color: rgba(255, 255, 255, 0.15);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 8px;
+  color: #ecf0f1; /* Default text color */
+  padding: 10px 15px;
+  font-size: 1em;
+  min-height: 40px; /* Ensure consistent height */
+}
+
+.filter-combo:hover,
+.edit-priority-combo:hover {
+  background-color: rgba(255, 255, 255, 0.25);
+  border-color: rgba(255, 255, 255, 0.3);
+}
+
+.filter-combo:focus,
+.edit-priority-combo:focus {
+  border-color: #3498db;
+  box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.5);
+  background-color: rgba(255, 255, 255, 0.2);
+}
+
+/* Style for the text in the combobox itself */
+.filter-combo label,
+.edit-priority-combo label {
+  color: #ecf0f1;
+}
+
+/* Style for the dropdown menu items (generic, applies to all combobox popups) */
+.gtk-combobox-popup .row {
+  background-color: #2c3e50; /* Darker background for dropdown items */
+  color: #ecf0f1;
+  padding: 8px 15px;
+}
+
+.gtk-combobox-popup .row:hover {
+  background-color: #34495e; /* Slightly lighter dark on hover */
+  color: #ecf0f1;
+}
+
+.gtk-combobox-popup .row:selected {
+  background-color: #3498db; /* Blue for selected item */
+  color: white;
+}
+
+/* Action Buttons */
+.action-button {
+  background: linear-gradient(to right, #3498db, #2980b9);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  padding: 10px 20px;
+  font-size: 1em;
+  font-weight: bold;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
   transition: all 0.2s ease-in-out;
 }
-.task-entry:focus {
-  border-color: #6a82fb;
-  box-shadow: 0 0 8px rgba(106, 130, 251, 0.4);
-  background-color: rgba(0, 0, 0, 0.4);
-}
-.task-entry::placeholder {
-  color: rgba(236, 240, 241, 0.6);
+
+.action-button:hover {
+  background: linear-gradient(to right, #2980b9, #3498db);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+  transform: translateY(-2px);
 }
 
-.action-button {
-  background: linear-gradient(145deg, #6a82fb, #fc5c7d);
-  color: white;
-  font-weight: bold;
-  font-size: 1.1em;
-  padding: 10px 20px;
-  border-radius: 10px;
-  border: none;
-  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
-  transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
-}
-.action-button:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
-  background: linear-gradient(145deg, #7b93ff, #fd738f);
-}
 .action-button:active {
   transform: translateY(0);
-  box-shadow: 0 1px 8px rgba(0, 0, 0, 0.15);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
 }
 
 .action-button-small {
-  background: linear-gradient(145deg, #2ecc71, #27ae60);
+  background: linear-gradient(to right, #3498db, #2980b9);
   color: white;
-  font-size: 0.85em;
-  padding: 6px 10px;
-  border-radius: 6px;
   border: none;
-  margin-left: 4px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  border-radius: 6px;
+  padding: 6px 12px;
+  font-size: 0.9em;
+  font-weight: bold;
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.15);
   transition: all 0.2s ease-in-out;
+  margin-left: 5px; /* Space between small buttons */
 }
+
 .action-button-small:hover {
-  background: linear-gradient(145deg, #27ae60, #2ecc71);
+  background: linear-gradient(to right, #2980b9, #3498db);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
   transform: translateY(-1px);
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
 }
+
 .action-button-small:active {
   transform: translateY(0);
   box-shadow: 0 1px 5px rgba(0, 0, 0, 0.1);
 }
 
 .delete-button-small {
-  background: linear-gradient(145deg, #e74c3c, #c0392b);
+  background: linear-gradient(to right, #e74c3c, #c0392b);
   color: white;
-  font-size: 0.85em;
-  padding: 6px 10px;
-  border-radius: 6px;
   border: none;
-  margin-left: 4px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  border-radius: 6px;
+  padding: 6px 12px;
+  font-size: 0.9em;
+  font-weight: bold;
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.15);
   transition: all 0.2s ease-in-out;
+  margin-left: 5px;
 }
+
 .delete-button-small:hover {
-  background: linear-gradient(145deg, #c0392b, #e74c3c);
+  background: linear-gradient(to right, #c0392b, #e74c3c);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
   transform: translateY(-1px);
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
 }
+
 .delete-button-small:active {
   transform: translateY(0);
   box-shadow: 0 1px 5px rgba(0, 0, 0, 0.1);
 }
 
-/* Task Row */
-.task-row {
-  background: rgba(255, 255, 255, 0.05);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-  margin-bottom: 6px;
-  border-radius: 8px;
-  padding: 0;
-  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.15);
-  transition: all 0.2s ease-in-out;
-}
-.task-row:hover {
-  background: rgba(255, 255, 255, 0.1);
-  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
-  transform: translateY(-1px);
-}
-.task-row:last-child {
-  margin-bottom: 0;
-}
-
-.task-description {
-  font-size: 0.95em;
-  color: #ecf0f1;
-  padding: 4px 0;
-}
-
-/* Priority Labels */
-.priority-low {
-  color: #2ecc71; /* Green */
-  font-weight: bold;
-  font-size: 0.8em;
-  margin-right: 5px;
-  padding: 2px 6px;
-  border-radius: 4px;
-  background: rgba(46, 204, 113, 0.15);
-}
-
-.priority-medium {
-  color: #f1c40f; /* Yellow */
-  font-weight: bold;
-  font-size: 0.8em;
-  margin-right: 5px;
-  padding: 2px 6px;
-  border-radius: 4px;
-  background: rgba(241, 196, 15, 0.15);
-}
-
-.priority-high {
-  color: #e74c3c; /* Red */
-  font-weight: bold;
-  font-size: 0.8em;
-  margin-right: 5px;
-  padding: 2px 6px;
-  border-radius: 4px;
-  background: rgba(231, 76, 60, 0.15);
-}
-
-/* Completed Task Styling */
-.completed-task {
-  text-decoration: line-through;
-  color: #95a5a6;
-  opacity: 0.7;
-}
-
 /* Dialog Styling */
 .edit-dialog,
 .confirm-dialog {
-  background: rgba(0, 0, 0, 0.8);
-  backdrop-filter: blur(6px);
-  border: 1px solid rgba(255, 255, 255, 0.3);
-  border-radius: 12px;
-  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.4);
-}
-.edit-dialog .title,
-.confirm-dialog .title {
-  font-size: 1.2em;
-  font-weight: bold;
-  color: #ecf0f1;
-  margin-bottom: 10px;
-}
-.edit-dialog .content {
-  padding: 15px;
-}
-.edit-dialog .entry {
-  margin-top: 8px;
-  margin-bottom: 15px;
-}
-.edit-dialog .button,
-.confirm-dialog .button {
-  padding: 8px 15px;
-  border-radius: 6px;
-  border: none;
-  margin-left: 8px;
-}
-.edit-dialog .button:hover,
-.confirm-dialog .button:hover {
-  filter: brightness(1.1);
-}
-.edit-dialog .button:active,
-.confirm-dialog .button:active {
-  transform: translateY(1px);
-}
-.edit-dialog .button:first-child,
-.confirm-dialog .button:first-child {
-  background: linear-gradient(to right, #2ecc71, #27ae60);
-  color: white;
-}
-.edit-dialog .button:first-child:hover,
-.confirm-dialog .button:first-child:hover {
-  background: linear-gradient(to right, #27ae60, #2ecc71);
+  background-color: #2c3e50; /* Dark background */
+  border-radius: 10px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.2);
 }
 
-.edit-dialog .button:nth-child(2),
-.confirm-dialog .button:nth-child(2) {
-  background: linear-gradient(to right, #e74c3c, #c0392b);
-  color: white;
+.edit-dialog .content-area,
+.confirm-dialog .content-area {
+  padding: 20px;
 }
-.edit-dialog .button:nth-child(2):hover,
-.confirm-dialog .button:nth-child(2):hover {
+
+.edit-dialog label,
+.confirm-dialog label {
+  color: #ecf0f1;
+}
+
+.dialog-action-area {
+  padding: 15px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  background-color: rgba(0, 0, 0, 0.1);
+}
+
+.dialog-action-area button {
+  /* Inherit button styles, or define specific dialog button styles */
+  background: linear-gradient(to right, #3498db, #2980b9);
+  color: white;
+  border: none;
+  border-radius: 6px;
+  padding: 8px 15px;
+  font-weight: bold;
+  margin-left: 10px;
+  transition: all 0.2s ease-in-out;
+}
+
+.dialog-action-area button:hover {
+  background: linear-gradient(to right, #2980b9, #3498db);
+  transform: translateY(-1px);
+}
+
+/* Special styling for the "Delete" button within dialogs if needed */
+.dialog-action-area button.destructive-action {
+  background: linear-gradient(to right, #e74c3c, #c0392b);
+}
+
+.dialog-action-area button.destructive-action:hover {
   background: linear-gradient(to right, #c0392b, #e74c3c);
 }
 
@@ -282,4 +328,72 @@
   color: #ecf0f1;
   margin-top: 3px;
   padding-right: 10px;
+}
+
+/* Calendar Popover Styling */
+.calendar-popover {
+  background-color: rgba(
+    44,
+    62,
+    80,
+    0.95
+  ); /* Dark background with transparency */
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 10px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+  padding: 10px;
+}
+
+.calendar-widget {
+  background-color: transparent;
+  color: #ecf0f1; /* Text color for dates */
+}
+
+/* Style for current month's days */
+.calendar-widget .day {
+  color: #ecf0f1;
+}
+
+/* Style for days in other months */
+.calendar-widget .other-month {
+  color: #95a5a6; /* Lighter color for days not in current month */
+}
+
+/* Style for selected day */
+.calendar-widget .selected {
+  background-color: #3498db; /* Blue for selected day */
+  color: white;
+  border-radius: 5px;
+}
+
+/* Style for today's day */
+.calendar-widget .today {
+  background-color: rgba(52, 152, 219, 0.3); /* Light blue for today */
+  border: 1px solid #3498db;
+  border-radius: 5px;
+}
+
+/* Style for weekdays header */
+.calendar-widget .weekday {
+  color: #7f8c8d; /* Grey for weekdays */
+  font-weight: bold;
+}
+
+/* Navigation buttons (arrows for month/year) */
+.calendar-widget .button {
+  background-color: rgba(255, 255, 255, 0.1);
+  color: #ecf0f1;
+  border-radius: 5px;
+  padding: 5px;
+}
+
+.calendar-widget .button:hover {
+  background-color: rgba(255, 255, 255, 0.2);
+}
+
+/* Month/Year label */
+.calendar-widget .header {
+  color: #ecf0f1;
+  font-weight: bold;
+  font-size: 1.1em;
 }

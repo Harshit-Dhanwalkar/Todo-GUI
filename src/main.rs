@@ -9,6 +9,7 @@ use gtk::{
 };
 use gtk::{CssProvider, style_context_add_provider_for_display};
 use std::cell::RefCell;
+use std::collections::HashSet;
 use std::fs;
 use std::io::{self, BufReader, BufWriter};
 use std::path::PathBuf;
@@ -57,7 +58,7 @@ struct AppState {
     tasks: Vec<Task>,
     file_path: PathBuf,
     current_category_filter: Option<String>,
-    current_due_date_filter: Option<NaiveDate>,
+    current_due_date_filter: Option<Option<NaiveDate>>,
 }
 
 impl AppState {
@@ -65,7 +66,6 @@ impl AppState {
         if self.file_path.exists() {
             let file = fs::File::open(&self.file_path)?;
             let reader = BufReader::new(file);
-            // Attempt to deserialize, handle older versions without 'priority' field
             match serde_json::from_reader::<_, Vec<Task>>(reader) {
                 Ok(loaded_tasks) => {
                     self.tasks = loaded_tasks;
@@ -139,6 +139,18 @@ impl AppState {
         self.tasks.retain(|t| t.id != id);
         self.save_tasks()
             .expect("Failed to save tasks after deletion");
+    }
+
+    fn get_unique_categories(&self) -> Vec<String> {
+        let mut categories = HashSet::new();
+        for task in &self.tasks {
+            if let Some(cat) = &task.category {
+                categories.insert(cat.clone());
+            }
+        }
+        let mut sorted_categories: Vec<String> = categories.into_iter().collect();
+        sorted_categories.sort();
+        sorted_categories
     }
 }
 
@@ -337,11 +349,12 @@ fn build_ui(app: &Application, app_state: Rc<RefCell<AppState>>) {
     filter_hbox.add_css_class("input-area");
     filter_hbox.add_css_class("filter-hbox");
 
-    let category_filter_entry = Entry::builder()
-        .placeholder_text("Filter by category (e.g., work)")
-        .hexpand(true)
-        .build();
-    category_filter_entry.add_css_class("task-entry");
+    // Category Filter ComboBoxText
+    let category_filter_combo = ComboBoxText::new();
+    category_filter_combo.append_text("All Categories");
+    category_filter_combo.set_active_id(Some("All Categories"));
+    category_filter_combo.set_hexpand(true);
+    category_filter_combo.add_css_class("filter-combo");
 
     let due_date_filter_entry = Entry::builder()
         .placeholder_text("Filter by due date (YYYY-MM-DD)")
@@ -355,7 +368,7 @@ fn build_ui(app: &Application, app_state: Rc<RefCell<AppState>>) {
     let clear_filters_button = Button::builder().label("Clear Filters").build();
     clear_filters_button.add_css_class("action-button-small");
 
-    filter_hbox.append(&category_filter_entry);
+    filter_hbox.append(&category_filter_combo);
     filter_hbox.append(&due_date_filter_entry);
     filter_hbox.append(&apply_filter_button);
     filter_hbox.append(&clear_filters_button);
@@ -390,7 +403,7 @@ fn build_ui(app: &Application, app_state: Rc<RefCell<AppState>>) {
     done_list_box_rc.add_css_class("task-list-box");
 
     let refresh_ui = Rc::new(
-        glib::clone!(@strong todo_list_box_rc, @strong doing_list_box_rc, @strong done_list_box_rc, @strong window_rc => move |app_state: Rc<RefCell<AppState>>| {
+        glib::clone!(@strong todo_list_box_rc, @strong doing_list_box_rc, @strong done_list_box_rc, @strong window_rc, @strong category_filter_combo => move |app_state: Rc<RefCell<AppState>>| {
             // Clear all list boxes
             while let Some(child) = todo_list_box_rc.first_child() {
                 todo_list_box_rc.remove(&child);
@@ -401,6 +414,21 @@ fn build_ui(app: &Application, app_state: Rc<RefCell<AppState>>) {
             while let Some(child) = done_list_box_rc.first_child() {
                 done_list_box_rc.remove(&child);
             }
+
+            // Populate category filter combo box
+            category_filter_combo.remove_all();
+            category_filter_combo.append_text("All Categories"); // Always present
+            let unique_categories = app_state.borrow().get_unique_categories();
+            for cat in unique_categories {
+                category_filter_combo.append_text(&cat);
+            }
+            // Set active filter if any, otherwise default to "All Categories"
+            if let Some(current_filter) = &app_state.borrow().current_category_filter {
+                category_filter_combo.set_active_id(Some(current_filter));
+            } else {
+                category_filter_combo.set_active_id(Some("All Categories"));
+            }
+
 
             // Iterate through tasks and re-populate lists, applying filters
             for task in app_state.borrow().tasks.iter() {
@@ -414,20 +442,32 @@ fn build_ui(app: &Application, app_state: Rc<RefCell<AppState>>) {
                             matches_filter = false;
                         }
                     } else {
+                        // Task has no category, but filter is applied
                         matches_filter = false;
                     }
                 }
 
                 // Due date filter
-                if let Some(filter_date) = &app_state_borrowed.current_due_date_filter {
-                    if let Some(task_due_time) = &task.due_time {
-                        if task_due_time.date() != *filter_date {
-                            matches_filter = false;
+                if let Some(filter_date_option) = &app_state_borrowed.current_due_date_filter {
+                    match filter_date_option {
+                        Some(filter_date) => { // Filtering for a specific date
+                            if let Some(task_due_time) = &task.due_time {
+                                if task_due_time.date() != *filter_date {
+                                    matches_filter = false;
+                                }
+                            } else {
+                                // Task has no due date, but a date filter is applied
+                                matches_filter = false;
+                            }
                         }
-                    } else {
-                        matches_filter = false;
+                        None => { // Filtering for tasks *without* a due date
+                            if task.due_time.is_some() {
+                                matches_filter = false;
+                            }
+                        }
                     }
                 }
+
 
                 if matches_filter {
                     let task_row = create_task_row(
@@ -474,28 +514,36 @@ fn build_ui(app: &Application, app_state: Rc<RefCell<AppState>>) {
 
     // Apply Filter button handler
     apply_filter_button.connect_clicked(
-        glib::clone!(@weak category_filter_entry, @weak due_date_filter_entry, @strong app_state, @strong refresh_ui => move |_| {
-            let category_text = category_filter_entry.text().to_string();
+        glib::clone!(@weak category_filter_combo, @weak due_date_filter_entry, @strong app_state, @strong refresh_ui => move |_| {
+            let selected_category = category_filter_combo.active_text().map(|t| t.to_string());
             let date_text = due_date_filter_entry.text().to_string();
 
             let mut app_state_mut = app_state.borrow_mut();
 
             // Update category filter
-            if category_text.is_empty() {
-                app_state_mut.current_category_filter = None;
+            if let Some(category_string) = selected_category {
+                if category_string == "All Categories" {
+                    app_state_mut.current_category_filter = None;
+                } else {
+                    app_state_mut.current_category_filter = Some(category_string.to_lowercase());
+                }
             } else {
-                app_state_mut.current_category_filter = Some(category_text.to_lowercase());
+                app_state_mut.current_category_filter = None; // No category selected
             }
+
 
             // Update due date filter
             if date_text.is_empty() {
-                app_state_mut.current_due_date_filter = None;
-            } else {
+                app_state_mut.current_due_date_filter = None; // No due date filter
+            } else if date_text.to_lowercase() == "none" {
+                app_state_mut.current_due_date_filter = Some(None); // Filter for tasks with no due date
+            }
+            else {
                 match NaiveDate::parse_from_str(&date_text, "%Y-%m-%d") {
-                    Ok(date) => app_state_mut.current_due_date_filter = Some(date),
+                    Ok(date) => app_state_mut.current_due_date_filter = Some(Some(date)),
                     Err(_) => {
                         println!("Invalid date format for filter: {}", date_text);
-                        app_state_mut.current_due_date_filter = None;
+                        app_state_mut.current_due_date_filter = None; // Clear filter on invalid input
                     }
                 }
             }
@@ -508,10 +556,12 @@ fn build_ui(app: &Application, app_state: Rc<RefCell<AppState>>) {
 
     // Clear Filters button handler
     clear_filters_button.connect_clicked(
-        glib::clone!(@weak category_filter_entry, @weak due_date_filter_entry, @strong app_state, @strong refresh_ui => move |_| {
+        glib::clone!(@weak category_filter_combo, @weak due_date_filter_entry, @strong app_state, @strong refresh_ui => move |_| {
             // Clear entry fields
-            category_filter_entry.set_text("");
             due_date_filter_entry.set_text("");
+
+            // Reset category combo box
+            category_filter_combo.set_active_id(Some("All Categories"));
 
             // Clear filters in app_state
             let mut app_state_mut = app_state.borrow_mut();
@@ -594,21 +644,22 @@ fn create_task_row(
         display_text.push_str(&format!(" (Due: {})", due_time.format("%Y-%m-%d %H:%M")));
     }
 
-    let task_label = Label::builder()
-        .label(&display_text)
+    let task_entry = Entry::builder() // Changed from Label to Entry
+        .text(&display_text)
         .halign(gtk::Align::Start)
         .hexpand(true)
+        .editable(false) // Initially not editable
+        .has_frame(false) // Initially no frame
         .build();
-    task_label.add_css_class("task-description");
+    task_entry.add_css_class("task-description"); // Keep the class for styling
 
     // Apply 'completed' style if task is done
     if task.status == TaskStatus::Done {
-        task_label.add_css_class("completed-task");
+        task_entry.add_css_class("completed-task");
     }
 
     // Buttons for actions
-    let edit_button = Button::builder().label("Edit").build();
-    edit_button.add_css_class("action-button-small");
+    // Removed the "Edit" button as it's no longer needed for direct editing
 
     let move_button = Button::builder()
         .label(match task.status {
@@ -656,69 +707,68 @@ fn create_task_row(
         }
     });
 
-    // Edit Button
-    edit_button.connect_clicked(glib::clone!(@strong task_label, @strong app_state, @strong refresh_ui_for_row, @weak main_window_rc, @strong task as edit_task => move |_| {
-        let dialog = Dialog::with_buttons(
-            Some("Edit Task"),
-            Some(&*main_window_rc),
-            gtk::DialogFlags::MODAL,
-            &[("Save", ResponseType::Ok), ("Cancel", ResponseType::Cancel)],
-        );
-        dialog.add_css_class("edit-dialog");
+    // Double-click to enable editing using GestureClick
+    let gesture = gtk::GestureClick::new();
+    gesture.set_button(0);
+    row.add_controller(gesture.clone());
 
-        let content_area = dialog.content_area();
-        let edit_vbox = Box::builder().orientation(Orientation::Vertical).spacing(10).build();
-        content_area.append(&edit_vbox);
-
-        let edit_entry = Entry::builder()
-            .text(&edit_task.description)
-            .placeholder_text("Task description")
-            .hexpand(true)
-            .build();
-        edit_entry.add_css_class("task-entry");
-        edit_vbox.append(&edit_entry);
-
-        // Priority ComboBox
-        let priority_combo = ComboBoxText::new();
-        priority_combo.append_text("Low");
-        priority_combo.append_text("Medium");
-        priority_combo.append_text("High");
-        priority_combo.set_active_id(Some(&format!("{:?}", edit_task.priority))); // Set current priority
-        edit_vbox.append(&priority_combo);
-
-
-        dialog.set_default_response(ResponseType::Ok);
-
-        dialog.connect_response(glib::clone!(@strong app_state, @strong refresh_ui_for_row, @strong edit_entry, @strong priority_combo, @strong edit_task => move |dialog, response| {
-            if response == ResponseType::Ok {
-                let new_description_text = edit_entry.text().to_string();
-                let new_priority_text = priority_combo.active_text().map(|t| t.to_string());
-
-                if !new_description_text.is_empty() {
-                    let (parsed_description, parsed_category, parsed_due_time, parsed_priority_from_text) = parse_task_description(&new_description_text);
-
-                    app_state.borrow_mut().tasks
-                        .iter_mut()
-                        .find(|t| t.id == edit_task.id)
-                        .map(|t| {
-                            t.description = parsed_description;
-                            t.category = parsed_category;
-                            t.due_time = parsed_due_time;
-                            t.priority = new_priority_text.and_then(|p_str| match p_str.to_lowercase().as_str() {
-                                "low" => Some(Priority::Low),
-                                "medium" => Some(Priority::Medium),
-                                "high" => Some(Priority::High),
-                                _ => None,
-                            }).or(parsed_priority_from_text).unwrap_or(t.priority.clone());
-                        });
-
-                    app_state.borrow().save_tasks().expect("Failed to save tasks after editing");
-                    refresh_ui_for_row(Rc::clone(&app_state));
-                }
+    let task_entry_clone = task_entry.clone();
+    gesture.connect_pressed(
+        glib::clone!(@weak task_entry_clone => move |_, n_press, _, _| {
+            if n_press == 2 { // Check for double click
+                task_entry_clone.set_editable(true);
+                task_entry_clone.set_has_frame(true);
+                task_entry_clone.grab_focus();
             }
-            dialog.close();
-        }));
-        dialog.present();
+        }),
+    );
+
+    // Save changes on Enter key press (activate signal)
+    task_entry.connect_activate(glib::clone!(@strong app_state, @strong refresh_ui_for_row, @weak task_entry, @strong task as edit_task => move |_| {
+        let new_full_description = task_entry.text().to_string();
+        if !new_full_description.is_empty() {
+            let (parsed_description, parsed_category, parsed_due_time, parsed_priority) = parse_task_description(&new_full_description);
+
+            app_state.borrow_mut().tasks
+                .iter_mut()
+                .find(|t| t.id == edit_task.id)
+                .map(|t| {
+                    t.description = parsed_description;
+                    t.category = parsed_category;
+                    t.due_time = parsed_due_time;
+                    t.priority = parsed_priority.unwrap_or(t.priority.clone()); // Update priority from parsed text
+                });
+
+            app_state.borrow().save_tasks().expect("Failed to save tasks after editing");
+            refresh_ui_for_row(Rc::clone(&app_state));
+        }
+        task_entry.set_editable(false);
+        task_entry.set_has_frame(false);
+    }));
+
+    // Save changes on focus out
+    task_entry.connect_notify_local(Some("has-focus"), glib::clone!(@strong app_state, @strong refresh_ui_for_row, @weak task_entry, @strong task as edit_task => move |entry_widget, _param_spec| {
+        if !entry_widget.has_focus() && entry_widget.is_editable() { // Check if focus is lost and it was in edit mode
+            let new_full_description = entry_widget.text().to_string();
+            if !new_full_description.is_empty() {
+                let (parsed_description, parsed_category, parsed_due_time, parsed_priority) = parse_task_description(&new_full_description);
+
+                app_state.borrow_mut().tasks
+                    .iter_mut()
+                    .find(|t| t.id == edit_task.id)
+                    .map(|t| {
+                        t.description = parsed_description;
+                        t.category = parsed_category;
+                        t.due_time = parsed_due_time;
+                        t.priority = parsed_priority.unwrap_or(t.priority.clone());
+                    });
+
+                app_state.borrow().save_tasks().expect("Failed to save tasks after editing");
+                refresh_ui_for_row(Rc::clone(&app_state));
+            }
+            entry_widget.set_editable(false);
+            entry_widget.set_has_frame(false);
+        }
     }));
 
     // Move Button
@@ -755,8 +805,7 @@ fn create_task_row(
         dialog.present();
     }));
 
-    hbox.append(&task_label);
-    hbox.append(&edit_button);
+    hbox.append(&task_entry);
     hbox.append(&move_button);
     hbox.append(&delete_button);
     row.set_child(Some(&hbox));
